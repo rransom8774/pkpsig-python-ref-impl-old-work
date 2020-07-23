@@ -6,7 +6,7 @@
 import struct
 import hashlib
 
-from . import params
+from . import params, permops
 
 struct_ui8 = struct.Struct('<B')
 struct_ui16 = struct.Struct('<H')
@@ -143,11 +143,7 @@ def hash_digest_suffix_fqvec(hobj_, suffixvec, outbytes):
 def perm_to_hash_input(perm):
     assert(params.PKP_N <= 0xFF)
     assert(len(perm) == params.PKP_N)
-    tmp = perm
-    tmp.sort()
-    for i in range(params.PKP_N):
-        assert(tmp[i] == i)
-        pass
+    permops.check_perm(perm)
     return pack_ui8_vec(perm)
 
 def hash_digest_index_perm_fqvec(hobj_, index, suffixperm, suffixvec, outbytes):
