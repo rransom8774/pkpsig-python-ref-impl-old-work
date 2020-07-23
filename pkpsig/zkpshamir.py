@@ -109,7 +109,7 @@ class ProverRun(object):
         version of Shamir's protocol is b=0.
         """
         assert(hasattr(self, 'z'))
-        assert(b in (0, 1))
+        assert(one_minus_b in (0, 1))
         self.b = 1 - one_minus_b
         pass
     def encode_proof_common(self):

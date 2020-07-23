@@ -71,7 +71,7 @@ def generate_signature(sk, message):
             assert(not "can't happen")
             pass
         pass
-    bulks, spills, spill_bounds = list(), list()
+    bulks, spills, spill_bounds = list(), list(), list()
     # XXX should be extracted into a function or class     
     for i in range(params.PKPSIG_NRUNS_TOTAL):
         bulk, R, M = proofs_common[i]
