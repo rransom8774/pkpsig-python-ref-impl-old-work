@@ -62,7 +62,7 @@ def squish(perm):
     l = list(perm)
     check_perm(l, perm)
     for i in range(len(l)):
-        for j in range(i, len(l)):
+        for j in range(i+1, len(l)):
             if l[j] > l[i]:
                 l[j] -= 1
                 pass
@@ -75,9 +75,9 @@ def unsquish(perm_squished):
     l = list(perm_squished)
     l.append(0)
     for i in range(len(l)):
-        for j in range(i, len(l)):
-            if l[j] > l[i]:
-                l[j] -= 1
+        for j in range(i+1, len(l)):
+            if l[j] >= l[i]:
+                l[j] += 1
                 pass
             pass
         pass
