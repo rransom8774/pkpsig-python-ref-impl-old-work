@@ -107,7 +107,7 @@ def generate_signature(sk, message):
                  challenge2_seed +
                  b''.join(bulks) +
                  bytes(spills_enc) +
-                 byte(vectenc.encode_root(spills_root, spills_root_bound)))
+                 bytes(vectenc.encode_root(spills_root, spills_root_bound)))
     return signature
 
 
