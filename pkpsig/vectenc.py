@@ -1,5 +1,5 @@
 
-# Authors: Robert Ransom
+# Authors: Robert Ransom, NTRU Prime round 2 submitters
 
 # The encoding and decoding functions below are based on the functions
 # on pages 17 and 18 of the NTRU Prime round 2 specification.

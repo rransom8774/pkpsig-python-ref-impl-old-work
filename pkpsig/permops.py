@@ -5,6 +5,19 @@
 
 from . import common
 
+def check_sorted_perm(l, orig):
+    for i in range(len(l)):
+        if l[i] != i:
+            raise common.DataError("Invalid permutation %r" % orig)
+        pass
+    pass
+
+def check_perm(perm, orig):
+    l = list(perm)
+    l.sort()
+    check_sorted_perm(l, orig)
+    pass
+
 def compose_inv(pi, sigma):
     "compose_inv(pi, sigma) -> pi \compose sigma^(-1)"
     assert(len(pi) == len(sigma))
@@ -44,4 +57,29 @@ def inverse_and_apply_inv(v, sigma):
             raise common.DataError("Invalid permutation %r" % sigma)
         pass
     return ([l[i][1] for i in range(len(l))], [l[i][2] for i in range(len(l))])
+
+def squish(perm):
+    l = list(perm)
+    check_perm(l, perm)
+    for i in range(len(l)):
+        for j in range(i, len(l)):
+            if l[j] > l[i]:
+                l[j] -= 1
+                pass
+            pass
+        pass
+    assert(l[len(l)-1] == 0)
+    return l[:len(l)-1]
+
+def unsquish(perm_squished):
+    l = list(perm_squished)
+    l.append(0)
+    for i in range(len(l)):
+        for j in range(i, len(l)):
+            if l[j] > l[i]:
+                l[j] -= 1
+                pass
+            pass
+        pass
+    return l
 

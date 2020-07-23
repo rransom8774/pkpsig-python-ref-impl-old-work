@@ -48,21 +48,6 @@ def hash_expand_index_seed(hobj_, index, seed, outbytes):
 def hash_expand_index(hobj_, index, outbytes):
     return hash_expand_index_seed(hobj_, index, b'', outbytes)
 
-def hash_expand_index_fwv_nonuniform(hobj_, index, outlen, weight):
-    buf = unpack_ui32_vec(hash_expand_index(hobj_, index, outlen*4))
-    assert(len(buf) == outlen)
-    for i in range(outlen):
-        buf[i] = buf[i] & 0xFFFFFFFE
-        if i < weight:
-            buf[i] = buf[i] | 1
-            pass
-        pass
-    buf.sort()
-    for i in range(outlen):
-        buf[i] = buf[i] & 1
-        pass
-    return buf
-
 def hash_expand_index_seed_perm(hobj_, index, seed, outlen, check_uniform = False):
     buf = unpack_ui32_vec(hash_expand_index_seed(hobj_, index, seed, outlen*4))
     assert(len(buf) == outlen)
@@ -86,27 +71,6 @@ def hash_expand_index_seed_perm(hobj_, index, seed, outlen, check_uniform = Fals
 def hash_expand_index_perm(hobj_, index, outlen, check_uniform = False):
    return hash_expand_index_seed_perm(hobj_, index, b'', outlen, check_uniform = False)
 
-def hash_expand_index_fqvec_sorted_nodups_nonuniform(hobj_, index, outlen):
-    buf = hash_expand_index_fwv(hobj_, index, params.PKP_Q, outlen)
-    assert(params.PKP_Q <= 0x7FFFFFFF)
-    assert(outlen <= params.PKP_Q)
-    for i in range(params.PKP_Q):
-        old = buf[i]
-        new_opt = (i & -buf[i]) | ((buf[i] - 1) & 0x7FFFFFFF)
-        if old == 1:
-            new = i
-            pass
-        elif old == 0:
-            new = 0x7FFFFFFF
-            pass
-        else:
-            raise Exception('internal error pUq6Qfm1_Kg: %d %r' % (i, buf[i]))
-        assert(new == new_opt)
-        buf[i] = new
-        pass
-    buf.sort()
-    return buf[:outlen]
-
 def hash_expand_index_fqvec(hobj_, index, outlen, check_uniform = False):
     buf = unpack_ui32_vec(hash_expand_index(hobj_, index, outlen*4))
     assert(len(buf) == outlen)
@@ -126,6 +90,36 @@ def hash_expand_suffix(hobj_, suffix, outbytes):
     hobj = hobj_.copy()
     hobj.update(suffix)
     return hobj.digest(outbytes)
+
+def hash_expand_suffix_to_fqvec(hobj_, suffix, outlen, check_uniform = False):
+    buf = unpack_ui32_vec(hash_expand_suffix(hobj_, suffix, outlen*4))
+    assert(len(buf) == outlen)
+    if check_uniform:
+        CEILING = 0x100000000 - (0x100000000 % params.PKP_Q)
+        for i in range(outlen):
+            if buf[i] >= CEILING:
+                return None
+            pass
+        pass
+    for i in range(outlen):
+        buf[i] = buf[i] % params.PKP_Q
+        pass
+    return buf
+
+def hash_expand_suffix_to_fwv_nonuniform(hobj_, suffix, outlen, weight):
+    buf = unpack_ui32_vec(hash_expand_suffix(hobj_, suffix, outlen*4))
+    assert(len(buf) == outlen)
+    for i in range(outlen):
+        buf[i] = buf[i] & 0xFFFFFFFE
+        if i < weight:
+            buf[i] = buf[i] | 1
+            pass
+        pass
+    buf.sort()
+    for i in range(outlen):
+        buf[i] = buf[i] & 1
+        pass
+    return buf
 
 def hash_digest_suffix(hobj_, suffix, outbytes):
     hobj = hobj_.copy()
@@ -157,4 +151,54 @@ def hash_digest_index_perm_fqvec(hobj_, index, suffixperm, suffixvec, outbytes):
     return hash_digest_suffix(hobj_, pack_ui32(index) +
                               perm_to_hash_input(suffixperm) +
                               fqvec_to_hash_input(suffixvec), outbytes)
+
+def hash_digest_index_suffix(hobj_, index, suffix, outbytes):
+    return hash_digest_suffix(hobj_, pack_ui32(index) + suffix, outbytes)
+
+def tree_hash_level(hobj_, first_index, nodes, nodebytes):
+    dest = list()
+    hash_index, node_index = first_index, 0
+    while node_index < len(nodes) - 1:
+        dest.append(hash_digest_index_suffix(hobj_,
+                                             hash_index,
+                                             nodes[node_index] + nodes[node_index+1],
+                                             nodebytes))
+        hash_index += 1
+        node_index += 2
+        pass
+    if len(nodes) & 1:
+        # Pass the extra node up without rehashing
+        dest.append(nodes[len(nodes)-1])
+        pass
+    return (hash_index, dest)
+
+def tree_hash(context, prefix, params, leaves, nodebytes, outbytes):
+    hobj = hash_init(context, prefix)
+    # First, hash each leaf node down to a nodebytes-bytes digest
+    nodes = [hash_digest_index_suffix(hobj, i, params + leaves[i], nodebytes)
+             for i in range(len(leaves))]
+    # Then, hash nodes together until there are at most two left
+    next_index = len(leaves)
+    while len(nodes) > 2:
+        next_index, nodes = tree_hash_level(hobj, next_index, nodes, nodebytes)
+        pass
+    # Compute and return the root of the tree
+    root = hash_digest_index_suffix(hobj, next_index,
+                                    params + b''.join(nodes),
+                                    outbytes)
+    return root
+
+def tree_hash_sorting(context, prefix, params, indexed_leaves, nodebytes, outbytes):
+    """
+    External API for tree hashing.  May allow a slightly faster implementation
+    with some tree-hash functions than fully sorting the leaves by index first.
+    """
+    ilsorted = list(indexed_leaves)
+    ilsorted.sort()
+    leaves = list()
+    for i in range(len(indexed_leaves)):
+        assert(ilsorted[i][0] == i)
+        leaves.append(ilsorted[i][1])
+        pass
+    return tree_hash(context, prefix, params, leaves, nodebytes, outbytes)
 

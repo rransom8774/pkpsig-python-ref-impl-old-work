@@ -112,28 +112,36 @@ class ProverRun(object):
         assert(b in (0, 1))
         self.b = 1 - one_minus_b
         pass
-    def encode_proof(self):
+    def encode_proof_common(self):
         """
-        prover_run.encode_proof() -> (bytes, spills, spill_bounds)
+        prover_run.encode_proof_common() -> (bytes, spills, spill_bounds)
 
-        Return the information needed to regenerate the commitments for
-        this ZKP run, given the challenges, message hash, and public key.
+        Return the common part of the information needed to regenerate the
+        commitments for this ZKP run, given the challenges, message hash,
+        and public key.
 
-        The size of the proof information must depend solely on the context
-        and challenges.
+        The size of the proof information must depend solely on the fixed
+        system parameters.
+        """
+        com_1_minus_b = (self.com1, self.com0)[self.b]
+        return (com_1_minus_b, (), ())
+    def encode_proof_b_dep(self):
+        """
+        prover_run.encode_proof_b_dep() -> (bytes, spills, spill_bounds)
+
+        Return the b-dependent part of the information needed to regenerate
+        the commitments for this ZKP run, given the challenges, message hash,
+        and public key.
+
+        The size of the proof information must depend solely on the fixed
+        system parameters and the second-round challenge bit.
         """
         com_1_minus_b = (self.com1, self.com0)[self.b]
         if self.b == 0:
             sigma = permops.inverse(self.sigma_inv)
             z_enc, z_root, z_root_bound = vectenc.encode(self.z, [params.PKP_Q]*params.PKP_N)
             if params.PKPSIG_SIGFMT_SQUISH_PERMUTATIONS:
-                for i in range(len(sigma)):
-                    for j in range(i, len(sigma)):
-                        if sigma[j] > sigma[i]:
-                            sigma[j] -= 1
-                            pass
-                        pass
-                    pass
+                sigma = permops.squish(sigma)
                 sigma_M = [params.PKP_N-i for i in range(params.PKP_N-1)]
                 pass
             else:
@@ -150,7 +158,7 @@ class ProverRun(object):
                 return (com_1_minus_b + bytes(z_enc) + bytes(sigma_enc), (), ())
             pass
         elif self.b == 1:
-            return (com_1_minus_b, (), ())
+            return (self.blindingseed, (), ())
         assert(not "can't happen")
         pass
     pass
@@ -179,16 +187,24 @@ class VerifierRun(object):
         assert(not hasattr(self, 'b'))
         self.b = 1 - one_minus_b
         pass
-    def get_proof_size(self):
+    def get_proof_size_common(self):
         """
-        verifier_run.get_proof_size() -> (nbytes, spill_bounds)
+        verifier_run.get_proof_size_common() -> (nbytes, spill_bounds)
 
-        Return the size of the data which ProverRun.encode_proof() would have
-        returned given the context and challenges.
+        Return the size of the data which ProverRun.encode_proof_common()
+        would have returned given the fixed system parameters.
+        """
+        return (params.PKPSIG_BYTES_COMMITHASH, ())
+    def get_proof_size_b_dep(self):
+        """
+        verifier_run.get_proof_size_b_dep() -> (nbytes, spill_bounds)
+
+        Return the size of the data which ProverRun.encode_proof_b_dep()
+        would have returned given the fixed system parameters and
+        second-round challenge bit.
         """
         if self.b == 0:
-            nbytes = (params.PKPSIG_BYTES_COMMITHASH +
-                      params.VECTSIZE_SIG_Z.lenS +
+            nbytes = (params.VECTSIZE_SIG_Z.lenS +
                       params.VECTSIZE_SIG_PERM.lenS)
             spill_bounds = (params.VECTSIZE_SIG_Z.root_bound,
                             params.VECTSIZE_SIG_PERM.root_bound)
@@ -199,44 +215,47 @@ class VerifierRun(object):
                            start=nbytes)
             pass
         elif self.b == 1:
-            return (params.PKPSIG_BYTES_COMMITHASH, ())
+            return (params.PKPSIG_BYTES_BLINDINGSEED, ())
         assert(not "can't happen")
         pass
-    def decode_proof(self, bulk, spills):
-        "Decode the proof information and regenerate the commitments."
-        com_1_minus_b = bulk[:params.PKPSIG_BYTES_COMMITHASH]
+    def decode_proof_common(self, bulk, spills):
+        assert(len(bulk) == params.PKPSIG_BYTES_COMMITHASH)
+        assert(len(spills) == 0)
         if self.b == 0:
-            self.com1 = com_1_minus_b
-            vects = bulk[params.PKPSIG_BYTES_COMMITHASH:]
+            self.com1 = bulk
+            return
+        elif self.b == 1:
+            self.com0 = bulk
+            return
+        assert(not "can't happen")
+        pass
+    def decode_proof_b_dep(self, bulk, spills):
+        """
+        Decode the proof information and regenerate the commitments.
+
+        Must be called after decode_proof_common.
+        """
+        if self.b == 0:
             z_nbytes = params.VECTSIZE_SIG_Z.lenS
             sigma_nbytes = params.VECTSIZE_SIG_PERM.lenS
-            if not params.PKPSIG_SIGFMT_MERGE_VECTOR_ROOTS:
-                z_nbytes += params.VECTSIZE_SIG_Z.root_bytes
-                sigma_nbytes += params.VECTSIZE_SIG_PERM.root_bytes
-                pass
-            z_enc, sigma_enc = \
-                common.split_sequence_fields(vects, (z_nbytes, sigma_nbytes))
             if params.PKPSIG_SIGFMT_MERGE_VECTOR_ROOTS:
+                z_enc, sigma_enc = \
+                    common.split_sequence_fields(bulk, (z_nbytes, sigma_nbytes))
                 z_root, sigma_root = spills
                 pass
             else:
-                z_root = vectenc.decode_root(z_enc[params.VECTSIZE_SIG_Z.lenS:],
-                                             params.VECTSIZE_SIG_Z.root_bound)
-                z_enc = z_enc[:params.VECTSIZE_SIG_Z.lenS]
-                sigma_root = vectenc.decode_root(sigma_enc[params.VECTSIZE_SIG_PERM.lenS:],
-                                                 params.VECTSIZE_SIG_PERM.root_bound)
-                sigma_enc = sigma_enc[:params.VECTSIZE_SIG_PERM.lenS]
+                z_root_nbytes = params.VECTSIZE_SIG_Z.root_bytes
+                sigma_root_nbytes = params.VECTSIZE_SIG_PERM.root_bytes
+                z_enc, z_root_enc, sigma_enc, sigma_root_enc = \
+                    common.split_sequence_fields(bulk, (z_nbytes, z_root_nbytes,
+                                                        sigma_nbytes, sigma_root_nbytes))
+                z_root = vectenc.decode_root(z_root_enc, params.VECTSIZE_SIG_Z.root_bound)
+                sigma_root = vectenc.decode_root(sigma_root_enc, params.VECTSIZE_SIG_PERM.root_bound)
                 pass
             self.z = vectenc.decode(z_enc, [params.PKP_Q]*params.PKP_N, z_root)
             if params.PKPSIG_SIGFMT_SQUISH_PERMUTATIONS:
-                sigma = vectenc.decode(sigma_enc, [params.PKP_N-i for i in range(params.PKP_N-1)], sigma_root)
-                for i in range(len(sigma)):
-                    for j in range(i, len(sigma)):
-                        if sigma[j] > sigma[i]:
-                            sigma[j] += 1
-                            pass
-                        pass
-                    pass
+                sigma_squished = vectenc.decode(sigma_enc, [params.PKP_N-i for i in range(params.PKP_N-1)], sigma_root)
+                sigma = permops.unsquish(sigma_squished)
                 pass
             else:
                 sigma = vectenc.decode(sigma_enc, [params.PKP_N]*params.PKP_N, sigma_root)
@@ -255,7 +274,7 @@ class VerifierRun(object):
             pass
         elif self.b == 1:
             self.com0 = com_1_minus_b
-            blindingseed = bulk[params.PKPSIG_BYTES_COMMITHASH:]
+            blindingseed = bulk
             bvals = self.ctx.expand_blindingseed(self.run_index, blindingseed)
             # com1 serves as a commitment to (pi sigma, r_sigma)
             self.com1 = bvals.commitment
