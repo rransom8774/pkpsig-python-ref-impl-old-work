@@ -48,11 +48,11 @@ class PublicParams(object):
         # Generate v
         # The key generator is responsible for ensuring that v has no
         # duplicate elements.
-        self.v = symmetric.hash_expand_index_fqvec(hobj, consts.HASHIDX_PUBPARAMS_V, params.PKP_N)
+        self.v = symmetric.hash_expand_index_to_fqvec(hobj, consts.HASHIDX_PUBPARAMS_V, params.PKP_N)
         # Generate A'
         self.A = PublicMatrix()
         for i in range(params.PKP_M, params.PKP_N, 1):
-            self.A[i] = symmetric.hash_expand_index_fqvec(hobj, i, params.PKP_M)
+            self.A[i] = symmetric.hash_expand_index_to_fqvec(hobj, i, params.PKP_M)
             pass
         return self
     pass
@@ -60,7 +60,7 @@ class PublicParams(object):
 def validate_param_seed(seed):
     hobj = symmetric.hash_init(consts.HASHCTX_PUBPARAMS, seed)
     # Generate v
-    v = symmetric.hash_expand_index_fqvec(hobj, consts.HASHIDX_PUBPARAMS_V, params.PKP_N)
+    v = symmetric.hash_expand_index_to_fqvec(hobj, consts.HASHIDX_PUBPARAMS_V, params.PKP_N)
     # Check v for duplicates
     v.sort()
     for i in range(len(v) - 1):
@@ -112,7 +112,7 @@ class SecretKey(PublicKey):
         self.expand_seed(self.pubseed)
         hobj = symmetric.hash_init(consts.HASHCTX_SECKEYSEEDEXPAND, self.pubseed + self.secseed)
         # Expand pi_inv
-        self.pi_inv = symmetric.hash_expand_index_perm(hobj, consts.HASHIDX_SECKEYSEEDEXPAND_PI_INV, params.PKP_N)
+        self.pi_inv = symmetric.hash_expand_index_to_perm(hobj, consts.HASHIDX_SECKEYSEEDEXPAND_PI_INV, params.PKP_N)
         # Derive u
         v_pi = permops.apply_inv(self.v, self.pi_inv)
         self.u = self.A.mult_vec(v_pi)

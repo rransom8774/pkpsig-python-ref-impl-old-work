@@ -10,7 +10,7 @@ from . import common, consts, keys, params, permops, symmetric, vectenc
 BlindingValues = collections.namedtuple('BlindingValues', ('pi_sigma_inv', 'r_sigma', 'commitment'))
 
 class VerifierContext(object):
-    __slots__ = ('key', 'messagehash', 'hobj_ebs')
+    __slots__ = ('key', 'messagehash', 'hobj_ebs',  'hobj_com0')
     def __init__(self, key, messagehash):
         self.key = key
         self.messagehash = messagehash
@@ -19,13 +19,13 @@ class VerifierContext(object):
         pass
     def expand_blindingseed(self, run_index, blindingseed, check_uniform = False):
         idx = run_index * consts.HASHIDX_EXPANDBLINDINGSEED_RUN_INDEX_FACTOR
-        pi_sigma_inv = symmetric.hash_expand_index_seed_perm(self.hobj_ebs, idx + consts.HASHIDX_EXPANDBLINDINGSEED_PI_SIGMA_INV, blindingseed, params.PKP_N, check_uniform)
+        pi_sigma_inv = symmetric.hash_expand_index_seed_to_perm(self.hobj_ebs, idx + consts.HASHIDX_EXPANDBLINDINGSEED_PI_SIGMA_INV, blindingseed, params.PKP_N, check_uniform)
         if check_uniform and (pi_sigma_inv is None):
             return None
-        r_sigma = symmetric.hash_expand_index_seed_fqvec(self.hobj_ebs, idx + consts.HASHIDX_EXPANDBLINDINGSEED_R_SIGMA, blindingseed, params.PKP_N, check_uniform)
+        r_sigma = symmetric.hash_expand_index_seed_to_fqvec(self.hobj_ebs, idx + consts.HASHIDX_EXPANDBLINDINGSEED_R_SIGMA, blindingseed, params.PKP_N, check_uniform)
         if check_uniform and (r_sigma is None):
             return None
-        commitment = hash_expand_index_seed(self.hobj_ebs, idx + consts.HASHIDX_EXPANDBLINDINGSEED_COMMITMENT, blindingseed, params.PKPSIG_BYTES_COMMITHASH)
+        commitment = symmetric.hash_expand_index_seed(self.hobj_ebs, idx + consts.HASHIDX_EXPANDBLINDINGSEED_COMMITMENT, blindingseed, params.PKPSIG_BYTES_COMMITHASH)
         return BlindingValues(pi_sigma_inv, r_sigma, commitment)
     pass
 

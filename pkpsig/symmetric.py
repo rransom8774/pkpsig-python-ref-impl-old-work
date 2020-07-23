@@ -48,7 +48,7 @@ def hash_expand_index_seed(hobj_, index, seed, outbytes):
 def hash_expand_index(hobj_, index, outbytes):
     return hash_expand_index_seed(hobj_, index, b'', outbytes)
 
-def hash_expand_index_seed_perm(hobj_, index, seed, outlen, check_uniform = False):
+def hash_expand_index_seed_to_perm(hobj_, index, seed, outlen, check_uniform = False):
     buf = unpack_ui32_vec(hash_expand_index_seed(hobj_, index, seed, outlen*4))
     assert(len(buf) == outlen)
     assert(outlen <= 128) # magic number and protocol constant
@@ -68,11 +68,11 @@ def hash_expand_index_seed_perm(hobj_, index, seed, outlen, check_uniform = Fals
         pass
     return buf
 
-def hash_expand_index_perm(hobj_, index, outlen, check_uniform = False):
-   return hash_expand_index_seed_perm(hobj_, index, b'', outlen, check_uniform = False)
+def hash_expand_index_to_perm(hobj_, index, outlen, check_uniform = False):
+   return hash_expand_index_seed_to_perm(hobj_, index, b'', outlen, check_uniform = False)
 
-def hash_expand_index_fqvec(hobj_, index, outlen, check_uniform = False):
-    buf = unpack_ui32_vec(hash_expand_index(hobj_, index, outlen*4))
+def hash_expand_index_seed_to_fqvec(hobj_, index, seed, outlen, check_uniform = False):
+    buf = unpack_ui32_vec(hash_expand_index_seed(hobj_, index, seed, outlen*4))
     assert(len(buf) == outlen)
     if check_uniform:
         CEILING = 0x100000000 - (0x100000000 % params.PKP_Q)
@@ -85,6 +85,9 @@ def hash_expand_index_fqvec(hobj_, index, outlen, check_uniform = False):
         buf[i] = buf[i] % params.PKP_Q
         pass
     return buf
+
+def hash_expand_index_to_fqvec(hobj_, index, outlen, check_uniform = False):
+   return hash_expand_index_seed_to_fqvec(hobj_, index, b'', outlen, check_uniform = False)
 
 def hash_expand_suffix(hobj_, suffix, outbytes):
     hobj = hobj_.copy()
