@@ -35,7 +35,8 @@ def generate_signature(sk, message):
                                     params.PKPSIG_BYTES_TREEHASHNODE,
                                     params.PKPSIG_BYTES_CHALLENGESEED)
     hobj = symmetric.hash_init(consts.HASHCTX_CHALLENGE1EXPAND, messagehash)
-    challenge1s = symmetric.hash_expand_suffix_to_fqvec(hobj, challenge1_seed, params.PKPSIG_NRUNS_TOTAL)
+    challenge1s = symmetric.hash_expand_suffix_to_fqvec(hobj, params.PKPSIG_TREEHASH_PARAM_STRING + challenge1_seed,
+                                                        params.PKPSIG_NRUNS_TOTAL)
     commit2s = list()
     for run in runs:
         run.challenge1(challenge1s[run.run_index])
@@ -51,7 +52,7 @@ def generate_signature(sk, message):
     hobj = symmetric.hash_init(consts.HASHCTX_CHALLENGE2EXPAND, messagehash)
     # b=1 is the long-proof case here;
     # zkpshamir will invert b for consistency with eprint 2018/714
-    challenge2s = symmetric.hash_expand_suffix_to_fwv_nonuniform(hobj, challenge2_seed,
+    challenge2s = symmetric.hash_expand_suffix_to_fwv_nonuniform(hobj, params.PKPSIG_TREEHASH_PARAM_STRING + challenge2_seed,
                                                                  params.PKPSIG_NRUNS_TOTAL,
                                                                  params.PKPSIG_NRUNS_LONG)
     proofs_common, proofs_short, proofs_long = list(), list(), list()
