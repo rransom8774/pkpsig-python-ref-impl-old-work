@@ -143,7 +143,7 @@ def hash_digest_suffix_fqvec(hobj_, suffixvec, outbytes):
 def perm_to_hash_input(perm):
     assert(params.PKP_N <= 0xFF)
     assert(len(perm) == params.PKP_N)
-    permops.check_perm(perm)
+    permops.check_perm(perm, perm)
     return pack_ui8_vec(perm)
 
 def hash_digest_index_perm_fqvec(hobj_, index, suffixperm, suffixvec, outbytes):
