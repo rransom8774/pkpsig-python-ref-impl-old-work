@@ -149,13 +149,13 @@ class ProverRun(object):
                 pass
             sigma_enc, sigma_root, sigma_root_bound = vectenc.encode(sigma, sigma_M)
             if params.PKPSIG_SIGFMT_MERGE_VECTOR_ROOTS:
-                return (com_1_minus_b + bytes(z_enc) + bytes(sigma_enc),
+                return (bytes(z_enc) + bytes(sigma_enc),
                         (z_root, sigma_root),
                         (z_root_bound, sigma_root_bound))
             else:
                 z_enc.extend(vectenc.encode_root(z_root, z_root_bound))
                 sigma_enc.extend(vectenc.encode_root(sigma_root, sigma_root_bound))
-                return (com_1_minus_b + bytes(z_enc) + bytes(sigma_enc), (), ())
+                return (bytes(z_enc) + bytes(sigma_enc), (), ())
             pass
         elif self.b == 1:
             return (self.blindingseed, (), ())
