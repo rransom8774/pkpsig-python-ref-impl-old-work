@@ -27,6 +27,22 @@ class VerifierContext(object):
             return None
         commitment = symmetric.hash_expand_index_seed(self.hobj_ebs, idx + consts.HASHIDX_EXPANDBLINDINGSEED_COMMITMENT, blindingseed, params.PKPSIG_BYTES_COMMITHASH)
         return BlindingValues(pi_sigma_inv, r_sigma, commitment)
+    def get_proof_size_common(self):
+        """
+        verifier_run.get_proof_size_common() -> (nbytes, spill_bounds)
+
+        Return the size of the data which ProverRun.encode_proof_common()
+        would have returned given the fixed system parameters.
+        """
+        return (params.PKPSIG_BYTES_COMMITHASH, ())
+    def decode_proof_common(self, run_index, challenge2, bulk, spills):
+        """
+        Decode the proof information returned by ProverRun.encode_proof_common(),
+        and return one or more commitments to be included in the challenge1 hash.
+        """
+        assert(len(bulk) == params.PKPSIG_BYTES_COMMITHASH)
+        assert(len(spills) == 0)
+        return ((run_index*2 + (1 - challenge2), bulk),)
     pass
 
 class ProverContext(VerifierContext):
@@ -75,7 +91,7 @@ class ProverRun(object):
         self.com1 = bvals.commitment
         pass
     def commit1(self):
-        "Generate and return the commitment for the first ZKP pass."
+        "Generate and return the commitments for the first ZKP pass."
         assert(hasattr(self, 'blindingseed'))
         # (pi sigma)^(-1) == sigma^(-1) pi^(-1)
         self.sigma_inv = permops.compose_inv(self.pi_sigma_inv, self.ctx.key.pi_inv)
@@ -85,7 +101,8 @@ class ProverRun(object):
         self.com0 = symmetric.hash_digest_index_perm_fqvec(self.ctx.hobj_com0,
                                                            self.run_index, self.sigma_inv, Ar,
                                                            params.PKPSIG_BYTES_COMMITHASH)
-        return self.com0 + self.com1
+        # Swap commitments to match challenge2() below
+        return ((self.run_index*2 + 0, self.com1), (self.run_index*2 + 1, self.com0))
     def challenge1(self, c):
         "Set the challenge (in GF(q)) for the second ZKP pass."
         assert(hasattr(self, 'com0'))
@@ -166,7 +183,7 @@ class ProverRun(object):
 class VerifierRun(object):
     __slots__ = ('ctx', 'run_index',
                  'c', 'b',
-                 'com0', 'com1', 'z')
+                 'com_b', 'z')
     def __init__(self, ctx, run_index):
         self.ctx = ctx
         self.run_index = run_index
@@ -187,14 +204,6 @@ class VerifierRun(object):
         assert(not hasattr(self, 'b'))
         self.b = 1 - one_minus_b
         pass
-    def get_proof_size_common(self):
-        """
-        verifier_run.get_proof_size_common() -> (nbytes, spill_bounds)
-
-        Return the size of the data which ProverRun.encode_proof_common()
-        would have returned given the fixed system parameters.
-        """
-        return (params.PKPSIG_BYTES_COMMITHASH, ())
     def get_proof_size_b_dep(self):
         """
         verifier_run.get_proof_size_b_dep() -> (nbytes, spill_bounds)
@@ -218,22 +227,10 @@ class VerifierRun(object):
             return (params.PKPSIG_BYTES_BLINDINGSEED, ())
         assert(not "can't happen")
         pass
-    def decode_proof_common(self, bulk, spills):
-        assert(len(bulk) == params.PKPSIG_BYTES_COMMITHASH)
-        assert(len(spills) == 0)
-        if self.b == 0:
-            self.com1 = bulk
-            return
-        elif self.b == 1:
-            self.com0 = bulk
-            return
-        assert(not "can't happen")
-        pass
     def decode_proof_b_dep(self, bulk, spills):
         """
-        Decode the proof information and regenerate the commitments.
-
-        Must be called after decode_proof_common.
+        Decode the proof information and regenerate the commitments which
+        VerifierContext.decode_proof_common() does not.
         """
         if self.b == 0:
             z_nbytes = params.VECTSIZE_SIG_Z.lenS
@@ -268,16 +265,15 @@ class VerifierRun(object):
             Ar_plus_cu = self.ctx.key.A.mult_vec(z_sigma_inv)
             Ar = tuple((Ar_plus_cu[i] + (params.PKP_Q - self.c)*self.ctx.key.u[i]) % params.PKP_Q
                        for i in range(params.PKP_N))
-            self.com0 = symmetric.hash_digest_index_perm_fqvec(self.ctx.hobj_com0,
-                                                               self.run_index, sigma_inv, Ar,
-                                                               params.PKPSIG_BYTES_COMMITHASH)
+            self.com_b = symmetric.hash_digest_index_perm_fqvec(self.ctx.hobj_com0,
+                                                                self.run_index, sigma_inv, Ar,
+                                                                params.PKPSIG_BYTES_COMMITHASH)
             pass
         elif self.b == 1:
-            self.com0 = com_1_minus_b
             blindingseed = bulk
             bvals = self.ctx.expand_blindingseed(self.run_index, blindingseed)
             # com1 serves as a commitment to (pi sigma, r_sigma)
-            self.com1 = bvals.commitment
+            self.com_b = bvals.commitment
             # z = r_sigma + c*v_(pi sigma);
             # need to recompute z from (pi_sigma_inv, r_sigma)
             v_pi_sigma = permops.apply_inv(self.ctx.key.v, bvals.pi_sigma_inv)
@@ -287,8 +283,8 @@ class VerifierRun(object):
         assert(not "can't happen")
         pass
     def commit1(self):
-        "Generate and return the commitment for the first ZKP pass."
-        return self.com0 + self.com1
+        "Generate and return the commitment recovered from the b-dependent proof for the first ZKP pass."
+        return ((self.run_index*2 + (1 - self.b), self.com_b),)
     def commit2(self):
         "Generate and return the commitment for the third ZKP pass (second commitment pass)."
         return symmetric.fqvec_to_hash_input(self.z)

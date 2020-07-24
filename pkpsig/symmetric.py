@@ -154,13 +154,13 @@ def hash_digest_index_perm_fqvec(hobj_, index, suffixperm, suffixvec, outbytes):
 def hash_digest_index_suffix(hobj_, index, suffix, outbytes):
     return hash_digest_suffix(hobj_, pack_ui32(index) + suffix, outbytes)
 
-def tree_hash_level(hobj_, first_index, nodes, nodebytes):
+def tree_hash_level(hobj_, first_index, params, nodes, nodebytes):
     dest = list()
     hash_index, node_index = first_index, 0
     while node_index < len(nodes) - 1:
         dest.append(hash_digest_index_suffix(hobj_,
                                              hash_index,
-                                             nodes[node_index] + nodes[node_index+1],
+                                             params + nodes[node_index] + nodes[node_index+1],
                                              nodebytes))
         hash_index += 1
         node_index += 2
@@ -178,14 +178,11 @@ def tree_hash(context, prefix, params, leaves, nodebytes, outbytes):
              for i in range(len(leaves))]
     # Then, hash nodes together until there are at most two left
     next_index = len(leaves)
-    while len(nodes) > 2:
-        next_index, nodes = tree_hash_level(hobj, next_index, nodes, nodebytes)
+    while len(nodes) > 1:
+        next_index, nodes = tree_hash_level(hobj, next_index, params, nodes, nodebytes)
         pass
-    # Compute and return the root of the tree
-    root = hash_digest_index_suffix(hobj, next_index,
-                                    params + b''.join(nodes),
-                                    outbytes)
-    return root
+    assert(nodebytes >= outbytes)
+    return nodes[0][:outbytes]
 
 def tree_hash_sorting(context, prefix, params, indexed_leaves, nodebytes, outbytes):
     """

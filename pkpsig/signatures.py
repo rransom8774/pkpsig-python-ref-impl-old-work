@@ -17,6 +17,21 @@ def hash_message(salt, message):
     hobj = symmetric.hash_init(consts.HASHCTX_MESSAGEHASH, salt)
     return symmetric.hash_digest_suffix(hobj, message, params.PKPSIG_BYTES_MESSAGEHASH)
 
+def expand_challenge1s(messagehash, challenge1_seed):
+    hobj = symmetric.hash_init(consts.HASHCTX_CHALLENGE1EXPAND, messagehash)
+    return symmetric.hash_expand_suffix_to_fqvec(hobj, params.PKPSIG_TREEHASH_PARAM_STRING + challenge1_seed,
+                                                 params.PKPSIG_NRUNS_TOTAL)
+
+def expand_challenge2s(messagehash, challenge1_seed, challenge2_seed):
+    hobj = symmetric.hash_init(consts.HASHCTX_CHALLENGE2EXPAND, messagehash)
+    # b=1 is the long-proof case here;
+    # zkpshamir will invert b for consistency with eprint 2018/714
+    return symmetric.hash_expand_suffix_to_fwv_nonuniform(hobj,
+                                                          params.PKPSIG_TREEHASH_PARAM_STRING +
+                                                          challenge1_seed + challenge2_seed,
+                                                          params.PKPSIG_NRUNS_TOTAL,
+                                                          params.PKPSIG_NRUNS_LONG)
+
 def generate_signature(sk, message):
     salt = generate_msghash_salt(sk, message)
     messagehash = hash_message(salt, message)
@@ -25,18 +40,16 @@ def generate_signature(sk, message):
     commit1s = list()
     for run in runs:
         run.setup()
-        commit1s.append((run.run_index, run.commit1()))
+        commit1s.extend(run.commit1())
         pass
     challenge1_seed = \
-        symmetric.tree_hash_sorting(consts.HASHCTX_CHALLENGE1HASH,
+        symmetric.tree_hash_sorting(consts.HASHCTX_CHALLENGE1HASH,    
                                     messagehash,
                                     params.PKPSIG_TREEHASH_PARAM_STRING,
                                     commit1s,
                                     params.PKPSIG_BYTES_TREEHASHNODE,
                                     params.PKPSIG_BYTES_CHALLENGESEED)
-    hobj = symmetric.hash_init(consts.HASHCTX_CHALLENGE1EXPAND, messagehash)
-    challenge1s = symmetric.hash_expand_suffix_to_fqvec(hobj, params.PKPSIG_TREEHASH_PARAM_STRING + challenge1_seed,
-                                                        params.PKPSIG_NRUNS_TOTAL)
+    challenge1s = expand_challenge1s(messagehash, challenge1_seed)
     commit2s = list()
     for run in runs:
         run.challenge1(challenge1s[run.run_index])
@@ -44,17 +57,12 @@ def generate_signature(sk, message):
         pass
     challenge2_seed = \
         symmetric.tree_hash_sorting(consts.HASHCTX_CHALLENGE2HASH,
-                                    messagehash,
+                                    messagehash,     
                                     params.PKPSIG_TREEHASH_PARAM_STRING,
                                     commit2s,
                                     params.PKPSIG_BYTES_TREEHASHNODE,
                                     params.PKPSIG_BYTES_CHALLENGESEED)
-    hobj = symmetric.hash_init(consts.HASHCTX_CHALLENGE2EXPAND, messagehash)
-    # b=1 is the long-proof case here;
-    # zkpshamir will invert b for consistency with eprint 2018/714
-    challenge2s = symmetric.hash_expand_suffix_to_fwv_nonuniform(hobj, params.PKPSIG_TREEHASH_PARAM_STRING + challenge2_seed,
-                                                                 params.PKPSIG_NRUNS_TOTAL,
-                                                                 params.PKPSIG_NRUNS_LONG)
+    challenge2s = expand_challenge2s(messagehash, challenge1_seed, challenge2_seed)
     proofs_common, proofs_short, proofs_long = list(), list(), list()
     for i in range(len(runs)):
         run = runs[i]
@@ -111,7 +119,80 @@ def generate_signature(sk, message):
                  bytes(vectenc.encode_root(spills_root, spills_root_bound)))
     return signature
 
-
+def verify_signature(pk, signature, message):
+    signature = bytes(signature)
+    if len(signature) != params.BYTES_SIGNATURE:
+        raise common.DataError('Signature has wrong length')
+    salt, challenge1_seed, challenge2_seed, proofs_bulk, spills_enc, spills_root_enc = \
+        common.split_sequence_fields(signature,
+                                     (params.PKPSIG_BYTES_MSGHASHSALT,
+                                      params.PKPSIG_BYTES_CHALLENGESEED,
+                                      params.PKPSIG_BYTES_CHALLENGESEED,
+                                      params.PKPSIG_TOTAL_BULK_LEN,
+                                      params.PKPSIG_TOTAL_SPILLS_ENC_LEN,
+                                      params.PKPSIG_TOTAL_SPILLS_ROOT_BYTES))
+    messagehash = hash_message(salt, message)
+    ctx = zkp.VerifierContext(pk, messagehash)
+    challenge1s = expand_challenge1s(messagehash, challenge1_seed)
+    challenge2s = expand_challenge2s(messagehash, challenge1_seed, challenge2_seed)
+    tmp = list(zip(challenge2s, range(params.PKPSIG_NRUNS_TOTAL), challenge1s))
+    tmp.sort()
+    run_order = [tmp[i][1] for i in range(params.PKPSIG_NRUNS_TOTAL)]
+    runs = [zkp.VerifierRun(ctx, run_order[i]) for i in range(params.PKPSIG_NRUNS_TOTAL)]
+    for i in range(params.PKPSIG_NRUNS_TOTAL):
+        assert(tmp[i][1] == runs.run_index)
+        runs[i].challenge1(tmp[i][2])
+        runs[i].challenge2(tmp[i][0]) # 0 if i <= params.PKPSIG_NRUNS_SHORT; 1 otherwise
+        pass
+    bulk_parts, spill_bounds_all, spill_bounds_parts = list(), list()
+    # Recover the sizes; these should be purely hard-coded in a real implementation
+    nbytes, spill_bounds = ctx.get_proof_size_common()
+    for i in range(params.PKPSIG_NRUNS_TOTAL):
+        bulk_parts.append(nbytes)
+        spill_bounds_all.extend(spill_bounds)
+        spill_bounds_parts.append(len(spill_bounds))
+        pass
+    for i in range(params.PKPSIG_NRUNS_TOTAL):
+        nbytes, spill_bounds = runs[i].get_proof_size_b_dep()
+        bulk_parts.append(nbytes)
+        spill_bounds_all.extend(spill_bounds)
+        spill_bounds_parts.append(len(spill_bounds))
+        pass
+    bulks = common.split_sequence_fields(proofs_bulk, bulk_parts)
+    spills_size = vectenc.size(spill_bounds) # sanity check
+    assert(spills_size.lenS == params.PKPSIG_TOTAL_SPILLS_ENC_LEN)
+    assert(spills_size.root_bound == params.PKPSIG_TOTAL_SPILLS_ROOT_BOUND)
+    assert(spills_size.root_bytes == params.PKPSIG_TOTAL_SPILLS_ROOT_BYTES)
+    spills_root = vectenc.decode_root(spills_root_enc, params.PKPSIG_TOTAL_SPILLS_ROOT_BOUND)
+    spills_all = vectenc.decode(spills_enc, spill_bounds_all, spills_root)
+    spills_parts = common.split_sequence_fields(spills_all, spill_bounds_parts)
+    # Process the common parts of the proofs
+    commit1s = list()
+    for i in range(params.PKPSIG_NRUNS_TOTAL):
+        commit1s.extend(ctx.decode_proof_common(i, challenge2s[i], bulks[i], spills_parts[i]))
+        pass
+    # Process the b-dependent parts of the proofs
+    commit2s = list()
+    for i in range(params.PKPSIG_NRUNS_TOTAL):
+        runs[i].decode_proof_b_dep(bulks[params.PKPSIG_NRUNS_TOTAL + i],
+                                   spills_parts[params.PKPSIG_NRUNS_TOTAL + i])
+        commit1s.extend(runs[i].commit1())
+        commit2s.append((runs[i].run_index, runs[i].commit2()))
+        pass
+    challenge1_seed_check = FIXME       
+        
+        
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
     
     
     
