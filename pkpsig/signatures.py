@@ -185,30 +185,8 @@ def verify_signature(pk, signature, message):
         commit1s.extend(runs[i].commit1())
         commit2s.append((runs[i].run_index, runs[i].commit2()))
         pass
-    challenge1_seed_check = FIXME       
-        
-        
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-
-
-
-
-
-
+    challenge1_seed_check = hash_commit1s(messagehash, commit1s)
+    challenge2_seed_check = hash_commit2s(messagehash, commit2s)
+    return ((challenge1_seed == challenge1_seed_check) and
+            (challenge2_seed == challenge2_seed_check))
 
