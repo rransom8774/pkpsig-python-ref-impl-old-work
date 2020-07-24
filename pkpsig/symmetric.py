@@ -171,20 +171,26 @@ def tree_hash_level(hobj_, first_index, params, nodes, nodebytes):
         pass
     return (hash_index, dest)
 
-def tree_hash(context, prefix, params, leaves, nodebytes, outbytes):
+def tree_hash(context, prefix, params, leaves, prehash_leaves, nodebytes, outbytes):
     hobj = hash_init(context, prefix)
-    # First, hash each leaf node down to a nodebytes-bytes digest
-    nodes = [hash_digest_index_suffix(hobj, i, params + leaves[i], nodebytes)
-             for i in range(len(leaves))]
+    # First, hash each leaf node down to a nodebytes-bytes digest if requested
+    if prehash_leaves:
+        nodes = [hash_digest_index_suffix(hobj, i, params + leaves[i], nodebytes)
+                 for i in range(len(leaves))]
+        next_index = len(leaves)
+        pass
+    else:
+        nodes = leaves
+        next_index = 0
+        pass
     # Then, hash nodes together until there are at most two left
-    next_index = len(leaves)
     while len(nodes) > 1:
         next_index, nodes = tree_hash_level(hobj, next_index, params, nodes, nodebytes)
         pass
     assert(nodebytes >= outbytes)
     return nodes[0][:outbytes]
 
-def tree_hash_sorting(context, prefix, params, indexed_leaves, nodebytes, outbytes):
+def tree_hash_sorting(context, prefix, params, indexed_leaves, prehash_leaves, nodebytes, outbytes):
     """
     External API for tree hashing.  May allow a slightly faster implementation
     with some tree-hash functions than fully sorting the leaves by index first.
@@ -196,5 +202,5 @@ def tree_hash_sorting(context, prefix, params, indexed_leaves, nodebytes, outbyt
         assert(ilsorted[i][0] == i)
         leaves.append(ilsorted[i][1])
         pass
-    return tree_hash(context, prefix, params, leaves, nodebytes, outbytes)
+    return tree_hash(context, prefix, params, leaves, prehash_leaves, nodebytes, outbytes)
 

@@ -17,10 +17,28 @@ def hash_message(salt, message):
     hobj = symmetric.hash_init(consts.HASHCTX_MESSAGEHASH, salt)
     return symmetric.hash_digest_suffix(hobj, message, params.PKPSIG_BYTES_MESSAGEHASH)
 
+def hash_commit1s(messagehash, commit1s):
+    return symmetric.tree_hash_sorting(consts.HASHCTX_CHALLENGE1HASH,
+                                       messagehash,
+                                       params.PKPSIG_TREEHASH_PARAM_STRING,
+                                       commit1s,
+                                       False,
+                                       params.PKPSIG_BYTES_TREEHASHNODE,
+                                       params.PKPSIG_BYTES_CHALLENGESEED)
+
 def expand_challenge1s(messagehash, challenge1_seed):
     hobj = symmetric.hash_init(consts.HASHCTX_CHALLENGE1EXPAND, messagehash)
     return symmetric.hash_expand_suffix_to_fqvec(hobj, params.PKPSIG_TREEHASH_PARAM_STRING + challenge1_seed,
                                                  params.PKPSIG_NRUNS_TOTAL)
+
+def hash_commit2s(messagehash, commit2s):
+    return symmetric.tree_hash_sorting(consts.HASHCTX_CHALLENGE2HASH,
+                                       messagehash,
+                                       params.PKPSIG_TREEHASH_PARAM_STRING,
+                                       commit2s,
+                                       True,
+                                       params.PKPSIG_BYTES_TREEHASHNODE,
+                                       params.PKPSIG_BYTES_CHALLENGESEED)
 
 def expand_challenge2s(messagehash, challenge1_seed, challenge2_seed):
     hobj = symmetric.hash_init(consts.HASHCTX_CHALLENGE2EXPAND, messagehash)
@@ -42,26 +60,14 @@ def generate_signature(sk, message):
         run.setup()
         commit1s.extend(run.commit1())
         pass
-    challenge1_seed = \
-        symmetric.tree_hash_sorting(consts.HASHCTX_CHALLENGE1HASH,    
-                                    messagehash,
-                                    params.PKPSIG_TREEHASH_PARAM_STRING,
-                                    commit1s,
-                                    params.PKPSIG_BYTES_TREEHASHNODE,
-                                    params.PKPSIG_BYTES_CHALLENGESEED)
+    challenge1_seed = hash_commit1s(messagehash, commit1s)
     challenge1s = expand_challenge1s(messagehash, challenge1_seed)
     commit2s = list()
     for run in runs:
         run.challenge1(challenge1s[run.run_index])
         commit2s.append((run.run_index, run.commit2()))
         pass
-    challenge2_seed = \
-        symmetric.tree_hash_sorting(consts.HASHCTX_CHALLENGE2HASH,
-                                    messagehash,     
-                                    params.PKPSIG_TREEHASH_PARAM_STRING,
-                                    commit2s,
-                                    params.PKPSIG_BYTES_TREEHASHNODE,
-                                    params.PKPSIG_BYTES_CHALLENGESEED)
+    challenge2_seed = hash_commit2s(messagehash, commit2s)
     challenge2s = expand_challenge2s(messagehash, challenge1_seed, challenge2_seed)
     proofs_common, proofs_short, proofs_long = list(), list(), list()
     for i in range(len(runs)):
