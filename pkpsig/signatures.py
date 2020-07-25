@@ -146,11 +146,11 @@ def verify_signature(pk, signature, message):
     run_order = [tmp[i][1] for i in range(params.PKPSIG_NRUNS_TOTAL)]
     runs = [zkp.VerifierRun(ctx, run_order[i]) for i in range(params.PKPSIG_NRUNS_TOTAL)]
     for i in range(params.PKPSIG_NRUNS_TOTAL):
-        assert(tmp[i][1] == runs.run_index)
+        assert(tmp[i][1] == runs[i].run_index)
         runs[i].challenge1(tmp[i][2])
         runs[i].challenge2(tmp[i][0]) # 0 if i <= params.PKPSIG_NRUNS_SHORT; 1 otherwise
         pass
-    bulk_parts, spill_bounds_all, spill_bounds_parts = list(), list()
+    bulk_parts, spill_bounds_all, spill_bounds_parts = list(), list(), list()
     # Recover the sizes; these should be purely hard-coded in a real implementation
     nbytes, spill_bounds = ctx.get_proof_size_common()
     for i in range(params.PKPSIG_NRUNS_TOTAL):
@@ -165,13 +165,18 @@ def verify_signature(pk, signature, message):
         spill_bounds_parts.append(len(spill_bounds))
         pass
     bulks = common.split_sequence_fields(proofs_bulk, bulk_parts)
-    spills_size = vectenc.size(spill_bounds) # sanity check
-    assert(spills_size.lenS == params.PKPSIG_TOTAL_SPILLS_ENC_LEN)
-    assert(spills_size.root_bound == params.PKPSIG_TOTAL_SPILLS_ROOT_BOUND)
-    assert(spills_size.root_bytes == params.PKPSIG_TOTAL_SPILLS_ROOT_BYTES)
-    spills_root = vectenc.decode_root(spills_root_enc, params.PKPSIG_TOTAL_SPILLS_ROOT_BOUND)
-    spills_all = vectenc.decode(spills_enc, spill_bounds_all, spills_root)
-    spills_parts = common.split_sequence_fields(spills_all, spill_bounds_parts)
+    if len(spill_bounds) != 0:
+        spills_size = vectenc.size(spill_bounds) # sanity check
+        assert(spills_size.lenS == params.PKPSIG_TOTAL_SPILLS_ENC_LEN)
+        assert(spills_size.root_bound == params.PKPSIG_TOTAL_SPILLS_ROOT_BOUND)
+        assert(spills_size.root_bytes == params.PKPSIG_TOTAL_SPILLS_ROOT_BYTES)
+        spills_root = vectenc.decode_root(spills_root_enc, params.PKPSIG_TOTAL_SPILLS_ROOT_BOUND)
+        spills_all = vectenc.decode(spills_enc, spill_bounds_all, spills_root)
+        spills_parts = common.split_sequence_fields(spills_all, spill_bounds_parts)
+        pass
+    else:
+        spills_parts = [()]*(params.PKPSIG_NRUNS_TOTAL * 2)
+        pass
     # Process the common parts of the proofs
     commit1s = list()
     for i in range(params.PKPSIG_NRUNS_TOTAL):

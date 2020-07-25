@@ -76,7 +76,7 @@ def encode(R, M):
     S2, root, root_bound = encode(R2, M2)
     return (S+S2, root, root_bound)
 
-def root_bound_to_bytes(root_bound):
+def root_bound_to_bytes(m):
     root_bytes = 0
     while m > 1:
         root_bytes += 1

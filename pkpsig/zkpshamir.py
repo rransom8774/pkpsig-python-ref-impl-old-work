@@ -220,8 +220,9 @@ class VerifierRun(object):
             if params.PKPSIG_SIGFMT_MERGE_VECTOR_ROOTS:
                 return (nbytes, spill_bounds)
             else:
-                return sum((vectenc.root_bound_to_bytes(m) for m in spill_bounds),
-                           start=nbytes)
+                return (sum((vectenc.root_bound_to_bytes(m) for m in spill_bounds),
+                            start=nbytes),
+                        ())
             pass
         elif self.b == 1:
             return (params.PKPSIG_BYTES_BLINDINGSEED, ())
@@ -264,7 +265,7 @@ class VerifierRun(object):
             # z_sigma_inv = r + c*v_pi; A*z_sigma_inv = A*r + c*u
             Ar_plus_cu = self.ctx.key.A.mult_vec(z_sigma_inv)
             Ar = tuple((Ar_plus_cu[i] + (params.PKP_Q - self.c)*self.ctx.key.u[i]) % params.PKP_Q
-                       for i in range(params.PKP_N))
+                       for i in range(params.PKP_M))
             self.com_b = symmetric.hash_digest_index_perm_fqvec(self.ctx.hobj_com0,
                                                                 self.run_index, sigma_inv, Ar,
                                                                 params.PKPSIG_BYTES_COMMITHASH)
@@ -280,7 +281,9 @@ class VerifierRun(object):
             self.z = tuple((bvals.r_sigma[i] + self.c*v_pi_sigma[i]) % params.PKP_Q
                            for i in range(params.PKP_N))
             pass
-        assert(not "can't happen")
+        else:
+            assert(not "can't happen")
+            pass
         pass
     def commit1(self):
         "Generate and return the commitment recovered from the b-dependent proof for the first ZKP pass."

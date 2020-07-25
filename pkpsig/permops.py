@@ -74,7 +74,7 @@ def squish(perm):
 def unsquish(perm_squished):
     l = list(perm_squished)
     l.append(0)
-    for i in range(len(l)):
+    for i in reversed(range(len(l))):
         for j in range(i+1, len(l)):
             if l[j] >= l[i]:
                 l[j] += 1
