@@ -75,7 +75,7 @@ class ProverContext(VerifierContext):
 class ProverRun(object):
     __slots__ = ('ctx', 'run_index',
                  'blindingseed', 'pi_sigma_inv', 'r_sigma', 'com1',
-                 'sigma_inv', 'com0',
+                 'sigma', 'com0',
                  'c', 'z',
                  'b')
     def __init__(self, ctx, run_index):
@@ -94,12 +94,13 @@ class ProverRun(object):
         "Generate and return the commitments for the first ZKP pass."
         assert(hasattr(self, 'blindingseed'))
         # (pi sigma)^(-1) == sigma^(-1) pi^(-1)
-        self.sigma_inv = permops.compose_inv(self.pi_sigma_inv, self.ctx.key.pi_inv)
-        r = permops.apply_inv(self.r_sigma, self.sigma_inv)
+        sigma_inv = permops.compose_inv(self.pi_sigma_inv, self.ctx.key.pi_inv)
+        self.sigma = permops.inverse(sigma_inv)
+        r = permops.apply_inv(self.r_sigma, self.sigma)
         Ar = self.ctx.key.A.mult_vec(r)
         # com0 serves as a commitment to (sigma, A*r)
         self.com0 = symmetric.hash_digest_index_perm_fqvec(self.ctx.hobj_com0,
-                                                           self.run_index, self.sigma_inv, Ar,
+                                                           self.run_index, self.sigma, Ar,
                                                            params.PKPSIG_BYTES_COMMITHASH)
         # Swap commitments to match challenge2() below
         return ((self.run_index*2 + 0, self.com1), (self.run_index*2 + 1, self.com0))
@@ -155,7 +156,7 @@ class ProverRun(object):
         """
         com_1_minus_b = (self.com1, self.com0)[self.b]
         if self.b == 0:
-            sigma = permops.inverse(self.sigma_inv)
+            sigma = tuple(self.sigma)
             z_enc, z_root, z_root_bound = vectenc.encode(self.z, [params.PKP_Q]*params.PKP_N)
             if params.PKPSIG_SIGFMT_SQUISH_PERMUTATIONS:
                 sigma = permops.squish(sigma)
@@ -263,14 +264,13 @@ class VerifierRun(object):
             # z = r_sigma + c*v_(pi sigma);
             # public key is u such that u = A*v_pi;
             # need to compute and check A*r
-            sigma_inv, z_sigma_inv = permops.inverse_and_apply_inv(self.z, sigma)
-            self.sigma_inv = tuple(sigma_inv)
+            z_sigma_inv = permops.apply_inv(self.z, sigma)
             # z_sigma_inv = r + c*v_pi; A*z_sigma_inv = A*r + c*u
             Ar_plus_cu = self.ctx.key.A.mult_vec(z_sigma_inv)
             Ar = tuple((Ar_plus_cu[i] + (params.PKP_Q - self.c)*self.ctx.key.u[i]) % params.PKP_Q
                        for i in range(params.PKP_M))
             self.com_b = symmetric.hash_digest_index_perm_fqvec(self.ctx.hobj_com0,
-                                                                self.run_index, sigma_inv, Ar,
+                                                                self.run_index, sigma, Ar,
                                                                 params.PKPSIG_BYTES_COMMITHASH)
             pass
         elif self.b == 1:
