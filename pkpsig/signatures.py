@@ -50,7 +50,13 @@ def expand_challenge2s(messagehash, challenge1_seed, challenge2_seed):
                                                           params.PKPSIG_NRUNS_TOTAL,
                                                           params.PKPSIG_NRUNS_LONG)
 
-def generate_signature(sk, message):
+def store_intermediate_value(ivs, name, value):
+    if ivs is not None:
+        ivs[name] = value
+        pass
+    pass
+
+def generate_signature(sk, message, ivs = None):
     salt = generate_msghash_salt(sk, message)
     messagehash = hash_message(salt, message)
     ctx = zkp.ProverContext(sk, messagehash)
@@ -60,6 +66,7 @@ def generate_signature(sk, message):
         run.setup()
         commit1s.extend(run.commit1())
         pass
+    store_intermediate_value(ivs, 'commit1s', commit1s)
     challenge1_seed = hash_commit1s(messagehash, commit1s)
     challenge1s = expand_challenge1s(messagehash, challenge1_seed)
     commit2s = list()
@@ -67,6 +74,7 @@ def generate_signature(sk, message):
         run.challenge1(challenge1s[run.run_index])
         commit2s.append((run.run_index, run.commit2()))
         pass
+    store_intermediate_value(ivs, 'commit2s', commit2s)
     challenge2_seed = hash_commit2s(messagehash, commit2s)
     challenge2s = expand_challenge2s(messagehash, challenge1_seed, challenge2_seed)
     proofs_common, proofs_short, proofs_long = list(), list(), list()
@@ -125,7 +133,7 @@ def generate_signature(sk, message):
                  bytes(vectenc.encode_root(spills_root, spills_root_bound)))
     return signature
 
-def verify_signature(pk, signature, message):
+def verify_signature(pk, signature, message, ivs = None):
     signature = bytes(signature)
     if len(signature) != params.BYTES_SIGNATURE:
         raise common.DataError('Signature has wrong length')
@@ -190,6 +198,8 @@ def verify_signature(pk, signature, message):
         commit1s.extend(runs[i].commit1())
         commit2s.append((runs[i].run_index, runs[i].commit2()))
         pass
+    store_intermediate_value(ivs, 'commit1s', commit1s)
+    store_intermediate_value(ivs, 'commit2s', commit2s)
     challenge1_seed_check = hash_commit1s(messagehash, commit1s)
     challenge2_seed_check = hash_commit2s(messagehash, commit2s)
     return ((challenge1_seed == challenge1_seed_check) and
