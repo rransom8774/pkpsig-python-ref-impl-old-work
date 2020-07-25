@@ -183,7 +183,8 @@ class ProverRun(object):
 class VerifierRun(object):
     __slots__ = ('ctx', 'run_index',
                  'c', 'b',
-                 'com_b', 'z')
+                 'com_b', 'z',
+                 'sigma', 'sigma_inv')
     def __init__(self, ctx, run_index):
         self.ctx = ctx
         self.run_index = run_index
@@ -258,10 +259,12 @@ class VerifierRun(object):
             else:
                 sigma = vectenc.decode(sigma_enc, [params.PKP_N]*params.PKP_N, sigma_root)
                 pass
+            self.sigma = tuple(sigma)
             # z = r_sigma + c*v_(pi sigma);
             # public key is u such that u = A*v_pi;
             # need to compute and check A*r
             sigma_inv, z_sigma_inv = permops.inverse_and_apply_inv(self.z, sigma)
+            self.sigma_inv = tuple(sigma_inv)
             # z_sigma_inv = r + c*v_pi; A*z_sigma_inv = A*r + c*u
             Ar_plus_cu = self.ctx.key.A.mult_vec(z_sigma_inv)
             Ar = tuple((Ar_plus_cu[i] + (params.PKP_Q - self.c)*self.ctx.key.u[i]) % params.PKP_Q
