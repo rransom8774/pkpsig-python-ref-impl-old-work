@@ -94,6 +94,7 @@ def generate_signature(sk, message, ivs = None):
             assert(not "can't happen")
             pass
         pass
+    store_intermediate_value(ivs, 'runs', runs)
     bulks, spills, spill_bounds = list(), list(), list()
     # XXX should be extracted into a function or class     
     for i in range(params.PKPSIG_NRUNS_TOTAL):
@@ -200,6 +201,7 @@ def verify_signature(pk, signature, message, ivs = None):
         pass
     store_intermediate_value(ivs, 'commit1s', commit1s)
     store_intermediate_value(ivs, 'commit2s', commit2s)
+    store_intermediate_value(ivs, 'runs', runs)
     challenge1_seed_check = hash_commit1s(messagehash, commit1s)
     challenge2_seed_check = hash_commit2s(messagehash, commit2s)
     return ((challenge1_seed == challenge1_seed_check) and
