@@ -69,6 +69,7 @@ def generate_signature(sk, message, ivs = None):
     store_intermediate_value(ivs, 'commit1s', commit1s)
     challenge1_seed = hash_commit1s(messagehash, commit1s)
     challenge1s = expand_challenge1s(messagehash, challenge1_seed)
+    store_intermediate_value(ivs, 'challenge1s', challenge1s)
     commit2s = list()
     for run in runs:
         run.challenge1(challenge1s[run.run_index])
@@ -77,6 +78,7 @@ def generate_signature(sk, message, ivs = None):
     store_intermediate_value(ivs, 'commit2s', commit2s)
     challenge2_seed = hash_commit2s(messagehash, commit2s)
     challenge2s = expand_challenge2s(messagehash, challenge1_seed, challenge2_seed)
+    store_intermediate_value(ivs, 'challenge2s', challenge2s)
     proofs_common, proofs_short, proofs_long = list(), list(), list()
     for i in range(len(runs)):
         run = runs[i]
@@ -94,6 +96,7 @@ def generate_signature(sk, message, ivs = None):
             assert(not "can't happen")
             pass
         pass
+    store_intermediate_value(ivs, 'ctx', ctx)
     store_intermediate_value(ivs, 'runs', runs)
     bulks, spills, spill_bounds = list(), list(), list()
     # XXX should be extracted into a function or class     
@@ -150,6 +153,8 @@ def verify_signature(pk, signature, message, ivs = None):
     ctx = zkp.VerifierContext(pk, messagehash)
     challenge1s = expand_challenge1s(messagehash, challenge1_seed)
     challenge2s = expand_challenge2s(messagehash, challenge1_seed, challenge2_seed)
+    store_intermediate_value(ivs, 'challenge1s', challenge1s)
+    store_intermediate_value(ivs, 'challenge2s', challenge2s)
     tmp = list(zip(challenge2s, range(params.PKPSIG_NRUNS_TOTAL), challenge1s))
     tmp.sort()
     run_order = [tmp[i][1] for i in range(params.PKPSIG_NRUNS_TOTAL)]
@@ -201,6 +206,7 @@ def verify_signature(pk, signature, message, ivs = None):
         pass
     store_intermediate_value(ivs, 'commit1s', commit1s)
     store_intermediate_value(ivs, 'commit2s', commit2s)
+    store_intermediate_value(ivs, 'ctx', ctx)
     store_intermediate_value(ivs, 'runs', runs)
     challenge1_seed_check = hash_commit1s(messagehash, commit1s)
     challenge2_seed_check = hash_commit2s(messagehash, commit2s)
