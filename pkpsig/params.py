@@ -5,7 +5,7 @@
 
 import struct
 
-PKP_Q = 997 # must be prime in this implementation
+PKP_Q = 977 # must be prime in this implementation
 PKP_N = 61
 PKP_M = 28
 
@@ -77,7 +77,7 @@ BYTES_PUBLICKEY = 52
 BYTES_SECRETKEY = 89
 if PKPSIG_SIGFMT_SQUISH_PERMUTATIONS:
     if PKPSIG_SIGFMT_MERGE_VECTOR_ROOTS:
-        BYTES_SIGNATURE = 13131
+        BYTES_SIGNATURE = 13119
         pass
     else:
         BYTES_SIGNATURE = 13145
@@ -85,7 +85,7 @@ if PKPSIG_SIGFMT_SQUISH_PERMUTATIONS:
     pass
 else:
     if PKPSIG_SIGFMT_MERGE_VECTOR_ROOTS:
-        BYTES_SIGNATURE = 13707
+        BYTES_SIGNATURE = 13695
         pass
     else:
         BYTES_SIGNATURE = 13750
