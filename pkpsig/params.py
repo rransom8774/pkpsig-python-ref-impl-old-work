@@ -75,5 +75,20 @@ else:
 # sizes derived from the above, manually for now
 BYTES_PUBLICKEY = 52
 BYTES_SECRETKEY = 89
-BYTES_SIGNATURE = 13145
+if PKPSIG_SIGFMT_SQUISH_PERMUTATIONS:
+    if PKPSIG_SIGFMT_MERGE_VECTOR_ROOTS:
+        BYTES_SIGNATURE = 13131
+        pass
+    else:
+        BYTES_SIGNATURE = 13145
+        pass
+    pass
+else:
+    if PKPSIG_SIGFMT_MERGE_VECTOR_ROOTS:
+        BYTES_SIGNATURE = 13707
+        pass
+    else:
+        BYTES_SIGNATURE = 13750
+        pass
+    pass
 
