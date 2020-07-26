@@ -7,12 +7,6 @@ from . import common, consts, keys, params, permops, symmetric, vectenc, zkpsham
 
 zkp = zkpshamir
 
-def generate_msghash_salt(sk, message):
-    hobj = symmetric.hash_init(consts.HASHCTX_INTERNAL_GENMSGHASHSALT)
-    return symmetric.hash_digest_suffix(hobj,
-                                        message + sk.saltgenseed,
-                                        params.PKPSIG_BYTES_MSGHASHSALT)
-
 def hash_message(salt, message):
     hobj = symmetric.hash_init(consts.HASHCTX_MESSAGEHASH, salt)
     return symmetric.hash_digest_suffix(hobj, message, params.PKPSIG_BYTES_MESSAGEHASH)
@@ -57,7 +51,7 @@ def store_intermediate_value(ivs, name, value):
     pass
 
 def generate_signature(sk, message, ivs = None):
-    salt = generate_msghash_salt(sk, message)
+    salt = symmetric.generate_msghash_salt(sk, message)
     messagehash = hash_message(salt, message)
     ctx = zkp.ProverContext(sk, messagehash)
     runs = [zkp.ProverRun(ctx, i) for i in range(params.PKPSIG_NRUNS_TOTAL)]

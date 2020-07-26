@@ -6,7 +6,7 @@
 import struct
 import hashlib
 
-from . import params, permops
+from . import consts, params, permops
 
 struct_ui8 = struct.Struct('<B')
 struct_ui16 = struct.Struct('<H')
@@ -203,4 +203,12 @@ def tree_hash_sorting(context, prefix, params, indexed_leaves, prehash_leaves, n
         leaves.append(ilsorted[i][1])
         pass
     return tree_hash(context, prefix, params, leaves, prehash_leaves, nodebytes, outbytes)
+
+def generate_msghash_salt(sk, message):
+    # in the symmetric module because for narrow-pipe hash functions,
+    # saltgenseed should precede the message
+    hobj = hash_init(consts.HASHCTX_INTERNAL_GENMSGHASHSALT)
+    return hash_digest_suffix(hobj,
+                              message + sk.saltgenseed,
+                              params.PKPSIG_BYTES_MSGHASHSALT)
 
