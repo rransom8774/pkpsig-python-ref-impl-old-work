@@ -22,7 +22,7 @@ the security level of the signature against forgery can be reduced
 without harming the long-term security of the keypair.  With the
 lowest-cost encodings supported by this software, this results in
 signatures at the 80-bit, 96-bit, and 112-bit preimage security levels
-of 7350 (or less), 9360 (or less), and 11468 (or less) bytes,
+of 7350 (or less), 9360 (or less), and 11548 (or less) bytes,
 respectively.  These choices are not fully optimized for size given
 the choice of encoding format; they have some extra bytes to reduce
 the number of runs of the underlying identification protocol.
