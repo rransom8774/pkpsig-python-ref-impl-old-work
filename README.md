@@ -27,7 +27,12 @@ respectively.  These choices are not fully optimized for size given
 the choice of encoding format; they have some extra bytes to reduce
 the number of runs of the underlying identification protocol.
 
-FIXME               
+The PKP-based 5-pass identification protocol appears to allow the best
+general-purpose performance, in signature size and computational cost
+simultaneously, of any zero-knowledge protocol of the cut-and-choose
+class.  In particular, the moderately tight encoding of Category 1 is
+smaller than Picnic3 at the same security level, with a fixed-size
+signature with fixed internal format.
 
 ## Authors
 
@@ -53,6 +58,10 @@ WARRANTY WHATSOEVER.
 This software is not intended for production use.  It makes no attempt
 to protect against any form of side-channel attack, and the
 verification routine will raise exceptions for malformed signatures.
+
+## 
+
+FIXME               
 
 ## 
 
