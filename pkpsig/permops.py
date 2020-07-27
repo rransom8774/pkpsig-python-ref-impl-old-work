@@ -3,6 +3,9 @@
 
 # This software is released to the public domain.
 
+# To the extent permitted by law, this software is provided WITHOUT ANY
+# WARRANTY WHATSOEVER.
+
 from . import common
 
 def check_sorted_perm(l, orig):

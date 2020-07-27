@@ -3,6 +3,9 @@
 
 # This software is released to the public domain.
 
+# To the extent permitted by law, this software is provided WITHOUT ANY
+# WARRANTY WHATSOEVER.
+
 HASHCTX_PUBPARAMS = 0
 HASHCTX_SECKEYSEEDEXPAND = 1
 HASHCTX_SECKEYCHECKSUM = 2

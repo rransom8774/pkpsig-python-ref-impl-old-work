@@ -10,6 +10,9 @@
 
 # My contributions to this software are released to the public domain.
 
+# To the extent permitted by law, this software is provided WITHOUT ANY
+# WARRANTY WHATSOEVER.
+
 import collections
 
 from . import common
