@@ -95,3 +95,8 @@ else:
         pass
     pass
 
+# identification strings for use in e.g. test vector files
+SIGNATURE_NAME_KEYPAIR = 'q%dn%dm%dkc1' % (PKP_Q, PKP_N, PKP_M)
+SIGNATURE_NAME_SIGSECLEVEL = 'sc1'
+SIGNATURE_NAME_SYMMETRIC = 'shake256'
+
