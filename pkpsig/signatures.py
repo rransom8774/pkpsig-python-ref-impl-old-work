@@ -176,8 +176,9 @@ def verify_signature(pk, signature, message, ivs = None):
         spill_bounds_parts.append(len(spill_bounds))
         pass
     bulks = common.split_sequence_fields(proofs_bulk, bulk_parts)
+    store_intermediate_value(ivs, 'spill_bounds_all', spill_bounds_all)
     if len(spill_bounds) != 0:
-        spills_size = vectenc.size(spill_bounds) # sanity check
+        spills_size = vectenc.size(spill_bounds_all) # sanity check
         assert(spills_size.lenS == params.PKPSIG_TOTAL_SPILLS_ENC_LEN)
         assert(spills_size.root_bound == params.PKPSIG_TOTAL_SPILLS_ROOT_BOUND)
         assert(spills_size.root_bytes == params.PKPSIG_TOTAL_SPILLS_ROOT_BYTES)
