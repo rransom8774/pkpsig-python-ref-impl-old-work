@@ -59,11 +59,3 @@ This software is not intended for production use.  It makes no attempt
 to protect against any form of side-channel attack, and the
 verification routine will raise exceptions for malformed signatures.
 
-## 
-
-FIXME               
-
-## 
-
-FIXME               
-
