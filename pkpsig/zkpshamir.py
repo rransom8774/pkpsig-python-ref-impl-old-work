@@ -78,7 +78,7 @@ class ProverContext(VerifierContext):
 class ProverRun(object):
     __slots__ = ('ctx', 'run_index',
                  'blindingseed', 'pi_sigma_inv', 'r_sigma', 'com1',
-                 'sigma', 'com0',
+                 'sigma', 'v_pi_sigma', 'com0',
                  'c', 'z',
                  'b')
     def __init__(self, ctx, run_index):
@@ -96,9 +96,7 @@ class ProverRun(object):
     def commit1(self):
         "Generate and return the commitments for the first ZKP pass."
         assert(hasattr(self, 'blindingseed'))
-        # (pi sigma)^(-1) == sigma^(-1) pi^(-1)
-        sigma_inv = permops.compose_inv(self.pi_sigma_inv, self.ctx.key.pi_inv)
-        self.sigma = permops.inverse(sigma_inv)
+        self.v_pi_sigma, self.sigma = permops.apply_and_compose_inv(self.ctx.key.v, self.ctx.key.pi_inv, self.pi_sigma_inv)
         r = permops.apply_inv(self.r_sigma, self.sigma)
         Ar = self.ctx.key.A.mult_vec(r)
         # com0 serves as a commitment to (sigma, A*r)
@@ -117,9 +115,8 @@ class ProverRun(object):
     def commit2(self):
         "Generate and return the commitment for the third ZKP pass (second commitment pass)."
         assert(hasattr(self, 'c'))
-        v_pi_sigma = permops.apply_inv(self.ctx.key.v, self.pi_sigma_inv)
         # z = r_sigma + c v_(pi sigma)
-        self.z = tuple((self.r_sigma[i] + self.c*v_pi_sigma[i]) % params.PKP_Q for i in range(params.PKP_N))
+        self.z = tuple((self.r_sigma[i] + self.c*self.v_pi_sigma[i]) % params.PKP_Q for i in range(params.PKP_N))
         return symmetric.fqvec_to_hash_input(self.z)
     def challenge2(self, one_minus_b):
         """

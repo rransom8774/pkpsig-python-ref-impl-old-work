@@ -46,6 +46,21 @@ def apply_inv(v, sigma):
         pass
     return [l[i][1] for i in range(len(l))]
 
+def apply_and_compose_inv(v, pi, sigma):
+    "apply_and_compose_inv(v, pi, sigma) -> (pi \compose sigma^(-1), v_(sigma^(-1)))"
+    # If elements of v are at most 15 bits long and vectors/permutations
+    # are at most 256 elements long, this can be done in one signed 32-bit
+    # sort operation.
+    assert(len(v) == len(sigma))
+    assert(len(pi) == len(sigma))
+    l = list(zip(sigma, v, pi))
+    l.sort()
+    for i in range(len(l)):
+        if l[i][0] != i:
+            raise common.DataError("Invalid permutation %r" % sigma)
+        pass
+    return ([l[i][1] for i in range(len(l))], [l[i][2] for i in range(len(l))])
+
 def inverse(pi):
     "inverse(pi) -> pi^(-1)"
     return compose_inv(range(len(pi)), pi)
