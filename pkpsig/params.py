@@ -99,4 +99,6 @@ else:
 SIGNATURE_NAME_KEYPAIR = 'q%dn%dm%dkc1' % (PKP_Q, PKP_N, PKP_M)
 SIGNATURE_NAME_SIGSECLEVEL = 'sc1'
 SIGNATURE_NAME_SYMMETRIC = 'shake256'
+SIGNATURE_NAME_SIGFMT = '%s%s' % (PKPSIG_SIGFMT_SQUISH_PERMUTATIONS and 's' or '',
+                                  PKPSIG_SIGFMT_MERGE_VECTOR_ROOTS and 'm' or '')
 
