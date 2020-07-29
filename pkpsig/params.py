@@ -8,7 +8,7 @@
 
 import struct
 
-PKP_Q = 977 # must be prime in this implementation
+PKP_Q = 977 # must be an odd prime in this implementation
 PKP_N = 61
 PKP_M = 28
 
