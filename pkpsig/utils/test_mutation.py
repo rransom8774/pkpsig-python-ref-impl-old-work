@@ -67,5 +67,6 @@ test_loop('lowercase-alphabet message', pk, sigalpha, b'abcdefghijklmnopqrstuvwx
 test_loop('null-message sig verified for lowercase-alphabet message', pk, signull, b'abcdefghijklmnopqrstuvwxyz', False)
 test_loop('lowercase-alphabet message sig verified for null message', pk, sigalpha, b'', False)
 
+print('exceptions = %r' % exceptions)
 print('bogons = %r' % bogons)
 
