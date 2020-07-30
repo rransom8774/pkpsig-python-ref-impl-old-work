@@ -27,6 +27,10 @@ PKPSIG_BYTES_BLINDINGSEED = 16
 PKPSIG_BYTES_MESSAGEHASH = 32
 PKPSIG_BYTES_TREEHASHNODE = 32
 
+# determined by keypair security level and possibly hash function
+# for SHAKE-256 at C1/2, use 15; at C3/4, use 10; at C5/6, use 7
+PKPSIG_TREEHASH_DEGREE = 15
+
 # determined by keypair security level, and not a protocol constant
 PKPSIG_BYTES_INTERNAL_BLINDINGSEEDGENSEED = 64
 
@@ -40,7 +44,8 @@ PKPSIG_NRUNS_LONG = 55
 PKPSIG_NRUNS_TOTAL = PKPSIG_NRUNS_SHORT + PKPSIG_NRUNS_LONG
 
 PKPSIG_TREEHASH_PARAM_STRING = \
-    struct.pack('<BBHH',
+    struct.pack('<BBBHH',
+                PKPSIG_TREEHASH_DEGREE,
                 PKPSIG_BYTES_COMMITHASH,
                 PKPSIG_BYTES_CHALLENGESEED,
                 PKPSIG_NRUNS_SHORT,

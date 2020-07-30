@@ -21,6 +21,7 @@ def hash_commit1s(messagehash, commit1s):
                                        commit1s,
                                        False,
                                        params.PKPSIG_BYTES_TREEHASHNODE,
+                                       params.PKPSIG_TREEHASH_DEGREE,
                                        params.PKPSIG_BYTES_CHALLENGESEED)
 
 def expand_challenge1s(messagehash, challenge1_seed):
@@ -35,6 +36,7 @@ def hash_commit2s(messagehash, commit2s):
                                        commit2s,
                                        True,
                                        params.PKPSIG_BYTES_TREEHASHNODE,
+                                       params.PKPSIG_TREEHASH_DEGREE,
                                        params.PKPSIG_BYTES_CHALLENGESEED)
 
 def expand_challenge2s(messagehash, challenge1_seed, challenge2_seed):

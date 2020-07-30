@@ -157,24 +157,23 @@ def hash_digest_index_perm_fqvec(hobj_, index, suffixperm, suffixvec, outbytes):
 def hash_digest_index_suffix(hobj_, index, suffix, outbytes):
     return hash_digest_suffix(hobj_, pack_ui32(index) + suffix, outbytes)
 
-def tree_hash_level(hobj_, first_index, params, nodes, nodebytes):
+def tree_hash_level(hobj_, first_index, params, nodes, nodebytes, degree):
     dest = list()
     hash_index, node_index = first_index, 0
-    while node_index < len(nodes) - 1:
+    while node_index < len(nodes):
+        # Python notation for [nodes[node_index], nodes[node_index+1], ..., nodes[node_index+degree - 1] ]
+        # upper bound is silently clamped to len(nodes)
+        innodes = nodes[node_index:node_index+degree]
         dest.append(hash_digest_index_suffix(hobj_,
                                              hash_index,
-                                             params + nodes[node_index] + nodes[node_index+1],
+                                             params + b''.join(innodes),
                                              nodebytes))
         hash_index += 1
-        node_index += 2
-        pass
-    if len(nodes) & 1:
-        # Pass the extra node up without rehashing
-        dest.append(nodes[len(nodes)-1])
+        node_index += degree
         pass
     return (hash_index, dest)
 
-def tree_hash(context, prefix, params, leaves, prehash_leaves, nodebytes, outbytes):
+def tree_hash(context, prefix, params, leaves, prehash_leaves, nodebytes, degree, outbytes):
     hobj = hash_init(context, prefix)
     # First, hash each leaf node down to a nodebytes-bytes digest if requested
     if prehash_leaves:
@@ -186,14 +185,14 @@ def tree_hash(context, prefix, params, leaves, prehash_leaves, nodebytes, outbyt
         nodes = leaves
         next_index = 0
         pass
-    # Then, hash nodes together until there are at most two left
+    # Then, hash nodes together until there is only one left
     while len(nodes) > 1:
-        next_index, nodes = tree_hash_level(hobj, next_index, params, nodes, nodebytes)
+        next_index, nodes = tree_hash_level(hobj, next_index, params, nodes, nodebytes, degree)
         pass
     assert(nodebytes >= outbytes)
     return nodes[0][:outbytes]
 
-def tree_hash_sorting(context, prefix, params, indexed_leaves, prehash_leaves, nodebytes, outbytes):
+def tree_hash_sorting(context, prefix, params, indexed_leaves, prehash_leaves, nodebytes, degree, outbytes):
     """
     External API for tree hashing.  May allow a slightly faster implementation
     with some tree-hash functions than fully sorting the leaves by index first.
@@ -205,7 +204,7 @@ def tree_hash_sorting(context, prefix, params, indexed_leaves, prehash_leaves, n
         assert(ilsorted[i][0] == i)
         leaves.append(ilsorted[i][1])
         pass
-    return tree_hash(context, prefix, params, leaves, prehash_leaves, nodebytes, outbytes)
+    return tree_hash(context, prefix, params, leaves, prehash_leaves, nodebytes, degree, outbytes)
 
 def generate_msghash_salt(sk, message):
     # in the symmetric module because for narrow-pipe hash functions,
