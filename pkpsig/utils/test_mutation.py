@@ -6,6 +6,8 @@
 # To the extent permitted by law, this software is provided WITHOUT ANY
 # WARRANTY WHATSOEVER.
 
+import sys
+
 import pkpsig.keys, pkpsig.signatures
 
 NOISY = True
@@ -23,11 +25,15 @@ def frob_byte(sig, bytepos):
     buf[bytepos] = (buf[bytepos] + 1) % 256
     return bytes(buf)
 
+exceptions = dict()
+
 def verify_noexcept(pk, sig, msg):
     try:
         return pkpsig.signatures.verify_signature(pk, sig, msg)
-    except e:
-        print('Exception %r' % e)
+    except:
+        ei = sys.exc_info()
+        exceptions[(pk, sig, msg)] = ei
+        print('Exception %r' % ei[0])
         return False
     assert(not "can't happen")
     pass
